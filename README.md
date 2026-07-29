@@ -79,6 +79,56 @@ Streamlit
 
 ---
 
+## Service Output Schemas
+
+### 1. File Validation (`file_validation.py`) Output Schema
+
+```json
+{
+  "status": "SUCCESS | PARTIAL_SUCCESS | FAILED",
+  "valid_files": [
+    {
+      "file_path": "uploaded_documents/salary_jan.pdf",
+      "file_name": "salary_jan.pdf",
+      "extension": ".pdf",
+      "size_bytes": 1048576,
+      "mime_type": "application/pdf",
+      "is_valid": true
+    }
+  ],
+  "invalid_files": [
+    {
+      "file_path": "uploaded_documents/corrupted_doc.xyz",
+      "reason": "Unsupported format or file corrupted",
+      "error_code": "INVALID_FORMAT"
+    }
+  ]
+}
+```
+
+### 2. Document Classifier (`classifier.py`) Output Schema
+
+```json
+{
+  "classified_documents": [
+    {
+      "file_path": "uploaded_documents/salary_jan.pdf",
+      "document_type": "SALARY_SLIP",
+      "confidence_score": 0.96,
+      "page_count": 2,
+      "metadata": {
+        "is_scanned_pdf": false,
+        "requires_ocr": false
+      }
+    }
+  ]
+}
+```
+
+**Supported Document Types**: `SALARY_SLIP`, `BANK_STATEMENT`, `TAX_RETURN`, `PROPERTY_DOCUMENT`, `BUSINESS_RECORD`, `INHERITANCE_RECORD`, `OTHER`
+
+---
+
 ## Project Structure
 
 ```
