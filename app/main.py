@@ -1,7 +1,8 @@
 from fastapi import FastAPI
+from app.api.routes import router
 
-app = FastAPI()
+app = FastAPI(
+    title="Customer Financial Summary"
+)
 
-@app.get("/")
-def home():
-    return {"message": "Source of Wealth AI"}
+app.include_router(router)
