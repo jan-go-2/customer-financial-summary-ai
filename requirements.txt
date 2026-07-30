@@ -140,3 +140,8 @@ websockets==15.0.1
 xlsxwriter==3.2.9
 xxhash==3.8.1
 zstandard==0.25.0
+google-genai
+pymupdf
+pydantic
+tenacity
+python-dotenv
