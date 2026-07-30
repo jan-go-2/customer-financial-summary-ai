@@ -80,6 +80,36 @@ def classifier_node(state: GraphState) -> Dict[str, Any]:
         "status": "CLASSIFIED" if classified_docs else state.get("status", "VALIDATED")
     }
 
+def extractor_node(state: GraphState) -> Dict[str, Any]:
+    """
+    Step 3: Entity Extraction Node.
+    """
+    classified_docs = state.get("classified_documents", [])
+    provider = state.get("provider", "groq")
+    errors = list(state.get("errors", []))
+    extracted_docs = []
+ 
+    for doc in classified_docs:
+        file_path = doc.get("file_path")
+        doc_type_raw = doc.get("document_type")
+        doc_type = doc_type_raw.lower() if isinstance(doc_type_raw, str) else str(doc_type_raw).lower()
+ 
+        try:
+            extracted = extract_fields(file_path, doc_type, provider=provider)
+            extracted_docs.append({
+                "file_path": file_path,
+                "doc_type": doc_type,
+                "confidence_score": doc.get("confidence_score"),
+                "extracted_data": extracted.model_dump(),
+            })
+        except Exception as exc:
+            errors.append(f"Extraction failed for {file_path}: {exc}")
+ 
+    return {
+        "extracted_documents": extracted_docs,
+        "errors": errors,
+        "status": "EXTRACTED" if extracted_docs else "FAILED_EXTRACTION",
+    }
 
 # --- Conditional Edge Logic ---
 
@@ -107,10 +137,7 @@ def build_workflow():
         }
     )
     builder.add_edge("classifier", END)
-
     return builder.compile()
-
-
 workflow_app = build_workflow()
 
 
