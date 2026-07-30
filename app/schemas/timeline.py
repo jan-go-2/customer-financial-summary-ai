@@ -1,55 +1,36 @@
 from datetime import date
+from enum import Enum
 from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
 
+class EventType(str, Enum):
+    SALARY_RECEIVED = "salary_received"
+    PROPERTY_PURCHASED = "property_purchased"
+    PROPERTY_SOLD = "property_sold"
+    BUSINESS_ACTIVITY = "business_activity"
+    INHERITANCE_RECEIVED = "inheritance_received"
+    OTHER = "other"
+
+
 class TimelineEvent(BaseModel):
-    """
-    Represents one chronological event in the customer's financial journey.
-    """
+    event_type: EventType
 
-    event_type: str = Field(
-        ...,
-        description="Type of event (employment, property_purchase, property_sale, etc.)"
-    )
+    event_date: Optional[date] = None
 
-    event_date: Optional[date] = Field(
-        default=None,
-        description="Primary date used for timeline ordering."
-    )
+    description: str
 
-    title: str = Field(
-        ...,
-        description="Short title shown in the timeline."
-    )
+    source_document: str
 
-    description: Optional[str] = Field(
-        default=None,
-        description="Additional information about the event."
-    )
-
-    source_document: Optional[str] = Field(
-        default=None,
-        description="Original document filename."
-    )
-
-    confidence_score: Optional[float] = Field(
-        default=None,
+    confidence_score: float = Field(
+        default=0.0,
         ge=0,
         le=1,
-        description="Confidence received from classifier/extraction."
     )
 
-    metadata: Dict[str, Any] = Field(
-        default_factory=dict,
-        description="Extra extracted information associated with the event."
-    )
+    metadata: Dict[str, Any] = Field(default_factory=dict)
 
 
 class TimelineResponse(BaseModel):
-    """
-    Response returned by Timeline Builder.
-    """
-
     events: List[TimelineEvent] = Field(default_factory=list)

@@ -5,7 +5,7 @@ from app.graph.state import GraphState
 from app.services.file_validation import validate_files
 from app.services.classifier import classify_document
 from app.services.entity_extractor import extract_fields
-
+from app.tools.timeline import build_timeline
 
 DOC_TYPE_MAP = {
     "SALE_DEED": "property_sale_deed",
@@ -111,6 +111,42 @@ def extractor_node(state: GraphState) -> Dict[str, Any]:
         "status": "EXTRACTED" if extracted_docs else "FAILED_EXTRACTION",
     }
 
+def timeline_node(state: GraphState) -> Dict[str, Any]:
+    """
+    Step 4: Timeline Builder Node.
+
+    Converts extracted document data into chronological timeline events.
+    """
+
+    extracted_docs = state.get("extracted_documents", [])
+    errors = list(state.get("errors", []))
+
+    if not extracted_docs:
+        return {
+            "timeline": [],
+            "status": "NO_EXTRACTED_DOCUMENTS",
+            "errors": errors,
+        }
+
+    try:
+        timeline_response = build_timeline(extracted_docs)
+
+        return {
+            "timeline": timeline_response.events,
+            "status": "TIMELINE_BUILT",
+            "errors": errors,
+        }
+
+    except Exception as exc:
+        errors.append(f"Timeline generation failed: {str(exc)}")
+
+        return {
+            "timeline": [],
+            "status": "FAILED_TIMELINE",
+            "errors": errors,
+        }
+    
+
 # --- Conditional Edge Logic ---
 
 def should_continue_after_validation(state: GraphState) -> str:
@@ -126,18 +162,27 @@ def build_workflow():
 
     builder.add_node("file_validation", file_validation_node)
     builder.add_node("classifier", classifier_node)
+    builder.add_node("extractor", extractor_node)
+    builder.add_node("timeline", timeline_node)
 
     builder.add_edge(START, "file_validation")
+
     builder.add_conditional_edges(
         "file_validation",
         should_continue_after_validation,
         {
             "classifier": "classifier",
-            END: END
-        }
+            END: END,
+        },
     )
-    builder.add_edge("classifier", END)
+
+    builder.add_edge("classifier", "extractor")
+    builder.add_edge("extractor", "timeline")
+    builder.add_edge("timeline", END)
+
     return builder.compile()
+
+
 workflow_app = build_workflow()
 
 
@@ -147,6 +192,7 @@ def run_financial_summary_pipeline(file_paths: List[str]) -> Dict[str, Any]:
         "validation_results": None,
         "validated_files": [],
         "classified_documents": [],
+        "timeline": [],
         "errors": [],
         "status": "INITIATED"
     }

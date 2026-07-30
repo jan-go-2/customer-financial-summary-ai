@@ -1,6 +1,6 @@
 from typing import List, Dict, Any, Optional
 from typing_extensions import TypedDict
-from app.schemas.events import FinancialEvent
+from app.schemas.timeline import TimelineEvent
 
 
 class GraphState(TypedDict):
@@ -10,5 +10,6 @@ class GraphState(TypedDict):
     validated_files: List[str]
     classified_documents: List[Dict[str, Any]]
     extracted_documents: List[Dict[str, Any]]
+    timeline: List[TimelineEvent]
     errors: List[str]
     status: str
