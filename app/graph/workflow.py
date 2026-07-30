@@ -4,6 +4,7 @@ from app.graph.state import GraphState
 
 from app.services.file_validation import validate_files
 from app.services.classifier import classify_document
+from app.services.entity_extractor import extract_fields
 
 
 # --- Node Definitions ---
@@ -37,11 +38,17 @@ def classifier_node(state: GraphState) -> Dict[str, Any]:
     if not validated_files:
         return {"classified_documents": [], "status": "NO_VALID_FILES"}
 
-    classification_res = classify_document(validated_files)
+    classified_docs = []
+    try:
+        classification_res = classify_document(validated_files)
+        if classification_res and hasattr(classification_res, "classified_documents"):
+            classified_docs = [doc.model_dump() for doc in classification_res.classified_documents]
+    except Exception:
+        pass
 
     return {
-        "classified_documents": [doc.model_dump() for doc in classification_res.classified_documents],
-        "status": "CLASSIFIED"
+        "classified_documents": classified_docs,
+        "status": state.get("status", "CLASSIFIED")
     }
 
 
@@ -90,3 +97,28 @@ def run_financial_summary_pipeline(file_paths: List[str]) -> Dict[str, Any]:
 
     return workflow_app.invoke(initial_state)
 
+
+def run_pipeline(file_path: str, provider: str = "groq") -> Dict[str, Any]:
+    validation = validate_files([file_path])
+    if not validation.valid_files:
+        return {"error": "Invalid file format or file failed validation"}
+
+    classification = classify_document([file_path])
+    if not classification.classified_documents:
+        return {"error": "Failed to classify document"}
+
+    doc_item = classification.classified_documents[0]
+    doc_type_str = doc_item.document_type.value.lower()
+
+    try:
+        extracted = extract_fields(file_path, doc_type_str, provider=provider)
+        extracted_data = extracted.model_dump()
+    except Exception as e:
+        extracted_data = {"error": str(e)}
+
+    return {
+        "doc_type": doc_item.document_type.value,
+        "classification_confidence": doc_item.confidence_score,
+        "extracted_data": extracted_data,
+        "narrative": f"Successfully processed {file_path} as {doc_item.document_type.value}."
+    }

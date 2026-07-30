@@ -1,18 +1,21 @@
-"""
-Same as the __main__ block in your original doc_llm_extraction.py --
-just run this file directly. No API, no agent, no LangGraph.
-"""
-
+from fastapi import FastAPI
 from dotenv import load_dotenv
 
+from app.api.routes import router
 from app.services.entity_extractor import extract_fields
 from app.utils.json_utils import print_json
 
 load_dotenv()
 
+app = FastAPI(
+    title="Customer Financial Summary AI"
+)
+
+app.include_router(router)
+
 PDF_PATH = "Sale_Agreement_For_Plot.pdf"
 DOC_TYPE = "property_sale_deed"
-PROVIDER = "groq"  # "local", "groq", "cerebras", "openrouter", "mistral", "nvidia_nim"
+PROVIDER = "groq"
 
 
 if __name__ == "__main__":
