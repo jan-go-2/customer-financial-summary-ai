@@ -24,8 +24,9 @@ def test_workflow_pipeline_execution():
 
         result = run_financial_summary_pipeline(file_paths)
 
-        assert result["status"] == "VALIDATED"
+        assert result["status"] == "CLASSIFIED"
         assert len(result["validated_files"]) == 3
+        assert len(result["classified_documents"]) == 3
         assert len(result["validation_results"]["invalid_files"]) == 1
 
 
@@ -42,5 +43,7 @@ def test_fastapi_upload_endpoint():
     json_data = response.json()
     assert "files" in json_data
     assert "workflow_result" in json_data
-    assert json_data["workflow_result"]["status"] == "VALIDATED"
+    assert json_data["workflow_result"]["status"] == "CLASSIFIED"
     assert len(json_data["workflow_result"]["validated_files"]) == 3
+    assert len(json_data["workflow_result"]["classified_documents"]) == 3
+

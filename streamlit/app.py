@@ -64,6 +64,12 @@ if uploaded_files:
                         else:
                             st.dataframe(df_valid, use_container_width=True)
 
+                    classified_docs = workflow_res.get("classified_documents", [])
+                    if classified_docs:
+                        st.subheader("🏷️ Document Classification Results")
+                        df_classified = pd.DataFrame(classified_docs)
+                        st.dataframe(df_classified, use_container_width=True)
+
                     if invalid_files:
                         st.warning("⚠️ Invalid / Skipped Documents Found")
                         df_invalid = pd.DataFrame(invalid_files)

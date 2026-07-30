@@ -7,6 +7,25 @@ from app.services.classifier import classify_document
 from app.services.entity_extractor import extract_fields
 
 
+DOC_TYPE_MAP = {
+    "SALE_DEED": "property_sale_deed",
+    "PURCHASE_AGREEMENT": "property_sale_deed",
+    "PROPERTY_SALE_DEED": "property_sale_deed",
+    "SALARY_SLIP": "salary_slip",
+    "BONUS_LETTER": "salary_slip",
+    "PAN_CARD": "identity_document",
+    "AADHAR_CARD": "identity_document",
+    "IDENTITY_DOCUMENT": "identity_document"
+}
+
+
+def _map_doc_type_to_schema(doc_type: str) -> str:
+    normalized = doc_type.upper()
+    if normalized in DOC_TYPE_MAP:
+        return DOC_TYPE_MAP[normalized]
+    return doc_type.lower()
+
+
 # --- Node Definitions ---
 
 def file_validation_node(state: GraphState) -> Dict[str, Any]:
@@ -39,16 +58,26 @@ def classifier_node(state: GraphState) -> Dict[str, Any]:
         return {"classified_documents": [], "status": "NO_VALID_FILES"}
 
     classified_docs = []
-    try:
-        classification_res = classify_document(validated_files)
-        if classification_res and hasattr(classification_res, "classified_documents"):
-            classified_docs = [doc.model_dump() for doc in classification_res.classified_documents]
-    except Exception:
-        pass
+    errors = list(state.get("errors", []))
+
+    for file_path in validated_files:
+        try:
+            classification_res = classify_document(file_path)
+            classified_docs.append(classification_res.model_dump())
+        except Exception as e:
+            errors.append(f"Classification skipped/failed for '{file_path}': {e}")
+            classified_docs.append({
+                "file_path": file_path,
+                "document_type": "UNKNOWN",
+                "category": "UNKNOWN",
+                "confidence_score": 0.0,
+                "page_count": 0
+            })
 
     return {
         "classified_documents": classified_docs,
-        "status": state.get("status", "CLASSIFIED")
+        "errors": errors,
+        "status": "CLASSIFIED" if classified_docs else state.get("status", "VALIDATED")
     }
 
 
@@ -103,22 +132,27 @@ def run_pipeline(file_path: str, provider: str = "groq") -> Dict[str, Any]:
     if not validation.valid_files:
         return {"error": "Invalid file format or file failed validation"}
 
-    classification = classify_document([file_path])
-    if not classification.classified_documents:
-        return {"error": "Failed to classify document"}
+    try:
+        classification = classify_document(file_path)
+        doc_type_val = classification.document_type
+        confidence = classification.confidence_score
+        category = classification.category
+    except Exception as e:
+        return {"error": f"Failed to classify document: {str(e)}"}
 
-    doc_item = classification.classified_documents[0]
-    doc_type_str = doc_item.document_type.value.lower()
+    doc_type_schema_key = _map_doc_type_to_schema(doc_type_val)
 
     try:
-        extracted = extract_fields(file_path, doc_type_str, provider=provider)
+        extracted = extract_fields(file_path, doc_type_schema_key, provider=provider)
         extracted_data = extracted.model_dump()
     except Exception as e:
         extracted_data = {"error": str(e)}
 
     return {
-        "doc_type": doc_item.document_type.value,
-        "classification_confidence": doc_item.confidence_score,
+        "doc_type": doc_type_val,
+        "category": category,
+        "classification_confidence": confidence,
         "extracted_data": extracted_data,
-        "narrative": f"Successfully processed {file_path} as {doc_item.document_type.value}."
+        "narrative": f"Successfully processed {file_path} as {doc_type_val} ({category})."
     }
+

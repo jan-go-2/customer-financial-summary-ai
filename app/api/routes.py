@@ -48,6 +48,7 @@ async def extract_document(file: UploadFile = File(...), provider: str = "groq")
 
     return {
         "doc_type": result.get("doc_type"),
+        "category": result.get("category"),
         "confidence": result.get("classification_confidence"),
         "extracted_data": result.get("extracted_data"),
         "narrative": result.get("narrative"),
