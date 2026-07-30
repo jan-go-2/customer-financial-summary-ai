@@ -1,5 +1,6 @@
 from typing import List, Dict, Any, Optional
 from typing_extensions import TypedDict
+from app.schemas.events import FinancialEvent
 
 
 class GraphState(TypedDict):

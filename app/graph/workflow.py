@@ -9,7 +9,7 @@ from app.services.entity_extractor import extract_fields
 
 DOC_TYPE_MAP = {
     "SALE_DEED": "property_sale_deed",
-    "PURCHASE_AGREEMENT": "property_sale_deed",
+    "PURCHASE_AGREEMENT": "property_purchase_deed",
     "PROPERTY_SALE_DEED": "property_sale_deed",
     "SALARY_SLIP": "salary_slip",
     "BONUS_LETTER": "salary_slip",
