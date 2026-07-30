@@ -3,7 +3,7 @@ from langgraph.graph import StateGraph, START, END
 from app.graph.state import GraphState
 
 from app.services.file_validation import validate_files
-from app.services.classifier import classify_documents
+from app.services.classifier import classify_document
 
 
 # --- Node Definitions ---
@@ -37,7 +37,7 @@ def classifier_node(state: GraphState) -> Dict[str, Any]:
     if not validated_files:
         return {"classified_documents": [], "status": "NO_VALID_FILES"}
 
-    classification_res = classify_documents(validated_files)
+    classification_res = classify_document(validated_files)
 
     return {
         "classified_documents": [doc.model_dump() for doc in classification_res.classified_documents],
