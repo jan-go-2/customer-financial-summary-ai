@@ -27,4 +27,6 @@ class ClassifiedDocumentItem(BaseModel):
 
 
 class ClassificationResponse(BaseModel):
-    classified_documents: List[ClassifiedDocumentItem] = []
+    classified_documents: List[ClassifiedDocumentItem] =  Field(
+        default_factory=list
+    )

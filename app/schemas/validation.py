@@ -19,5 +19,8 @@ class InvalidFileItem(BaseModel):
 
 class FileValidationResponse(BaseModel):
     status: str = Field(default="SUCCESS", description="SUCCESS | PARTIAL_SUCCESS | FAILED")
-    valid_files: List[ValidatedFileItem] = []
-    invalid_files: List[InvalidFileItem] = []
+    error: Optional[str] = Field(default=None, description="Error message provided from validation")
+    valid_files: List[ValidatedFileItem] = Field(default_factory=list)
+    invalid_files: List[InvalidFileItem] = Field(default_factory=list)
+
+
