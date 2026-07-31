@@ -137,7 +137,7 @@ class SalarySlip(BaseModel):
     net_salary: Amount = None
     deductions: Amount = None
     provident_fund: Amount = None
-    pay_period: Optional[str] = None
+    pay_period: Date = None
 
 
 class Form16(BaseModel):
