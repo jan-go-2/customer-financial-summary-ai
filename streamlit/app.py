@@ -37,7 +37,7 @@ if uploaded_files:
 
         with st.spinner("Uploading and running workflow pipeline..."):
             try:
-                response = requests.post(api_url, files=files_payload, timeout=30)
+                response = requests.post(api_url, files=files_payload, timeout=None)
                 if response.status_code == 200:
                     data = response.json()
                     st.success("✅ Upload and Pipeline Execution Successful!")
