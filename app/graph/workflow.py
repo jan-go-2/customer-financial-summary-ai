@@ -38,6 +38,7 @@ DOC_TYPE_MAP = {
     "OFFER_LETTER": "offer_letter",
     "PROMOTION_LETTER": "promotion_letter",
     "EXPERIENCE_LETTER": "experience_letter",
+    "RELIEVING_LETTER": "relieving_letter",
 
     # Identity Documents -- routed to the specific schemas, not the old combined one
     "PAN_CARD": "pan_card",
@@ -48,6 +49,13 @@ DOC_TYPE_MAP = {
     # Legal Documents
     "POWER_OF_ATTORNEY": "power_of_attorney",
     "AFFIDAVIT": "affidavit",
+    "WILL": "last_will_testament",
+    "LAST_WILL_AND_TESTAMENT": "last_will_testament",
+    "LAST_WILL_TESTAMENT": "last_will_testament",
+    "GUARDIAN_CONSENT_KYC_DECLARATION": "guardian_consent_kyc_declaration",
+    "GUARDIAN_CONSENT_AND_KYC_DECLARATION": "guardian_consent_kyc_declaration",
+    "GUARDIAN_CONSENT_FORM": "guardian_consent_kyc_declaration",
+    "KYC_DECLARATION": "guardian_consent_kyc_declaration",
 }
 
 
