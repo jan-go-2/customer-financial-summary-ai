@@ -147,49 +147,13 @@ def extractor_node(state: GraphState) -> Dict[str, Any]:
         "status": "EXTRACTED" if extracted_docs else "FAILED_EXTRACTION",
     }
 
-<<<<<<< HEAD
-def timeline_node(state: GraphState) -> Dict[str, Any]:
-    """
-    Step 4: Timeline Builder Node.
-
-    Converts extracted document data into chronological timeline events.
-    """
-
-=======
 
 def timeline_node(state: GraphState) -> Dict[str, Any]:
     """Step 4: Timeline Builder Node. Converts extracted data into chronological events."""
->>>>>>> 089050e (add schema, prompt, extraction for all document types)
     extracted_docs = state.get("extracted_documents", [])
     errors = list(state.get("errors", []))
 
     if not extracted_docs:
-<<<<<<< HEAD
-        return {
-            "timeline": [],
-            "status": "NO_EXTRACTED_DOCUMENTS",
-            "errors": errors,
-        }
-
-    try:
-        timeline_response = build_timeline(extracted_docs)
-
-        return {
-            "timeline": timeline_response.events,
-            "status": "TIMELINE_BUILT",
-            "errors": errors,
-        }
-
-    except Exception as exc:
-        errors.append(f"Timeline generation failed: {str(exc)}")
-
-        return {
-            "timeline": [],
-            "status": "FAILED_TIMELINE",
-            "errors": errors,
-        }
-    
-=======
         return {"timeline": [], "status": "NO_EXTRACTED_DOCUMENTS", "errors": errors}
 
     try:
@@ -199,7 +163,6 @@ def timeline_node(state: GraphState) -> Dict[str, Any]:
         errors.append(f"Timeline generation failed: {str(exc)}")
         return {"timeline": [], "status": "FAILED_TIMELINE", "errors": errors}
 
->>>>>>> 089050e (add schema, prompt, extraction for all document types)
 
 # --- Conditional Edge Logic ---
 
@@ -224,17 +187,8 @@ def build_workflow():
     builder.add_conditional_edges(
         "file_validation",
         should_continue_after_validation,
-<<<<<<< HEAD
-        {
-            "classifier": "classifier",
-            END: END,
-        },
-    )
-
-=======
         {"classifier": "classifier", END: END},
     )
->>>>>>> 089050e (add schema, prompt, extraction for all document types)
     builder.add_edge("classifier", "extractor")
     builder.add_edge("extractor", "timeline")
     builder.add_edge("timeline", END)
@@ -256,10 +210,7 @@ def run_pipeline(file_paths: List[str], provider: str = "groq") -> Dict[str, Any
         "validation_results": None,
         "validated_files": [],
         "classified_documents": [],
-<<<<<<< HEAD
-=======
         "extracted_documents": [],
->>>>>>> 089050e (add schema, prompt, extraction for all document types)
         "timeline": [],
         "errors": [],
         "status": "INITIATED",
