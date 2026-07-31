@@ -11,12 +11,12 @@ DOC_TYPE_MAP = {
     # Property Documents
     "SALE_DEED": "property_sale_deed",
     "PROPERTY_SALE_DEED": "property_sale_deed",
-    "PURCHASE_AGREEMENT": "purchase_agreement",   # fixed: was pointing to a key that didn't exist
+    "PURCHASE_AGREEMENT": "purchase_agreement",
     "INHERITANCE_DOCUMENT": "inheritance_document",
 
     # Income Documents
     "SALARY_SLIP": "salary_slip",
-    "BONUS_LETTER": "bonus_letter",               # fixed: was incorrectly routed to salary_slip
+    "BONUS_LETTER": "bonus_letter",
     "FORM_16": "form_16",
     "INCOME_TAX_RETURN": "income_tax_return",
 
@@ -39,7 +39,7 @@ DOC_TYPE_MAP = {
     "PROMOTION_LETTER": "promotion_letter",
     "EXPERIENCE_LETTER": "experience_letter",
 
-    # Identity Documents -- now routed to the specific schemas, not the old combined one
+    # Identity Documents -- routed to the specific schemas, not the old combined one
     "PAN_CARD": "pan_card",
     "AADHAR_CARD": "aadhaar_card",     # classifier's spelling (missing second "A")
     "AADHAAR_CARD": "aadhaar_card",    # correct spelling, in case classifier uses this instead

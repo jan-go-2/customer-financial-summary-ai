@@ -1,15 +1,36 @@
-"""
-One Pydantic model per document type, grouped by category to match your
-document taxonomy sheet. Field lists start from the "Key Information
-Extracted" column and add a few adjacent fields (dates, account/reference
-numbers, names) that are normally needed alongside the headline fields.
+import re
+from typing import Annotated, Optional
+from pydantic import BaseModel, BeforeValidator
 
-Add a new document type: define the model in its category section below,
-then register it in DOC_TYPE_SCHEMAS. Nothing else needs to change.
-"""
 
-from typing import Optional
-from pydantic import BaseModel
+_NUMBER_PATTERN = re.compile(r"-?\d[\d,]*(?:\.\d+)?")
+
+
+def _clean_amount(value):
+    """Find the number embedded in messy LLM output and convert to float.
+    Returns None if the value is missing or truly not a number, instead
+    of raising -- a null amount is normal LLM output, a crash isn't.
+
+    Matches the actual digit sequence rather than stripping character by
+    character, so abbreviation punctuation (e.g. the "." in "Rs.") doesn't
+    get mistaken for a second decimal point."""
+    if value is None:
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, str):
+        match = _NUMBER_PATTERN.search(value)
+        if not match:
+            return None
+        cleaned = match.group().replace(",", "")
+        try:
+            return float(cleaned)
+        except ValueError:
+            return None
+    return None
+
+
+Amount = Annotated[Optional[float], BeforeValidator(_clean_amount)]
 
 
 # ============================================================
@@ -19,10 +40,10 @@ from pydantic import BaseModel
 class SalarySlip(BaseModel):
     employee_name: Optional[str] = None
     company_name: Optional[str] = None
-    gross_salary: Optional[str] = None
-    net_salary: Optional[str] = None
-    deductions: Optional[str] = None
-    provident_fund: Optional[str] = None
+    gross_salary: Amount = None
+    net_salary: Amount = None
+    deductions: Amount = None
+    provident_fund: Amount = None
     pay_period: Optional[str] = None
 
 
@@ -31,23 +52,23 @@ class Form16(BaseModel):
     employer_name: Optional[str] = None
     pan_number: Optional[str] = None
     assessment_year: Optional[str] = None
-    annual_income: Optional[str] = None
-    tax_deducted: Optional[str] = None
+    annual_income: Amount = None
+    tax_deducted: Amount = None
 
 
 class IncomeTaxReturn(BaseModel):
     assessee_name: Optional[str] = None
     pan_number: Optional[str] = None
     assessment_year: Optional[str] = None
-    total_income: Optional[str] = None
-    tax_paid: Optional[str] = None
+    total_income: Amount = None
+    tax_paid: Amount = None
     filing_date: Optional[str] = None
 
 
 class BonusLetter(BaseModel):
     employee_name: Optional[str] = None
     company_name: Optional[str] = None
-    bonus_amount: Optional[str] = None
+    bonus_amount: Amount = None
     financial_year: Optional[str] = None
     bonus_date: Optional[str] = None
 
@@ -61,21 +82,21 @@ class BankStatement(BaseModel):
     account_number: Optional[str] = None
     bank_name: Optional[str] = None
     statement_period: Optional[str] = None
-    total_credits: Optional[str] = None
-    total_debits: Optional[str] = None
-    average_balance: Optional[str] = None
-    salary_credits: Optional[str] = None
-    emi_debits: Optional[str] = None
+    total_credits: Amount = None
+    total_debits: Amount = None
+    average_balance: Amount = None
+    salary_credits: Amount = None
+    emi_debits: Amount = None
 
 
 class FixedDepositReceipt(BaseModel):
     depositor_name: Optional[str] = None
     bank_name: Optional[str] = None
     fd_number: Optional[str] = None
-    deposit_amount: Optional[str] = None
+    deposit_amount: Amount = None
     deposit_date: Optional[str] = None
     maturity_date: Optional[str] = None
-    interest_rate: Optional[str] = None
+    interest_rate: Amount = None
 
 
 # ============================================================
@@ -86,8 +107,8 @@ class MutualFundStatement(BaseModel):
     investor_name: Optional[str] = None
     folio_number: Optional[str] = None
     fund_name: Optional[str] = None
-    units_held: Optional[str] = None
-    holdings_value: Optional[str] = None
+    units_held: Amount = None
+    holdings_value: Amount = None
     statement_date: Optional[str] = None
 
 
@@ -95,7 +116,7 @@ class DematStatement(BaseModel):
     account_holder_name: Optional[str] = None
     dp_id: Optional[str] = None
     client_id: Optional[str] = None
-    holdings_value: Optional[str] = None
+    holdings_value: Amount = None
     statement_date: Optional[str] = None
 
 
@@ -103,8 +124,8 @@ class InsurancePolicy(BaseModel):
     policy_holder_name: Optional[str] = None
     policy_number: Optional[str] = None
     insurer_name: Optional[str] = None
-    sum_assured: Optional[str] = None
-    premium_amount: Optional[str] = None
+    sum_assured: Amount = None
+    premium_amount: Amount = None
     policy_start_date: Optional[str] = None
     policy_end_date: Optional[str] = None
 
@@ -117,8 +138,8 @@ class HomeLoanStatement(BaseModel):
     borrower_name: Optional[str] = None
     lender_name: Optional[str] = None
     loan_account_number: Optional[str] = None
-    outstanding_amount: Optional[str] = None
-    emi_amount: Optional[str] = None
+    outstanding_amount: Amount = None
+    emi_amount: Amount = None
     loan_start_date: Optional[str] = None
     tenure: Optional[str] = None
 
@@ -127,17 +148,17 @@ class CarLoanStatement(BaseModel):
     borrower_name: Optional[str] = None
     lender_name: Optional[str] = None
     loan_account_number: Optional[str] = None
-    outstanding_amount: Optional[str] = None
-    emi_amount: Optional[str] = None
+    outstanding_amount: Amount = None
+    emi_amount: Amount = None
 
 
 class CreditCardStatement(BaseModel):
     card_holder_name: Optional[str] = None
     card_number_masked: Optional[str] = None
     issuing_bank: Optional[str] = None
-    outstanding_amount: Optional[str] = None
-    credit_limit: Optional[str] = None
-    minimum_due: Optional[str] = None
+    outstanding_amount: Amount = None
+    credit_limit: Amount = None
+    minimum_due: Amount = None
     statement_date: Optional[str] = None
 
 
@@ -155,9 +176,9 @@ class PropertySaleDeed(BaseModel):
     agreement_date: Optional[str] = None
     property_type: Optional[str] = None
     property_address: Optional[str] = None
-    plot_area: Optional[str] = None
+    plot_area: Optional[str] = None  # kept as str -- usually includes a unit (sq ft/sq yd), converting to float alone loses that
     property_status: Optional[str] = None
-    sale_consideration: Optional[str] = None
+    sale_consideration: Amount = None
     possession_date: Optional[str] = None
     jurisdiction: Optional[str] = None
     registration_number: Optional[str] = None
@@ -170,7 +191,7 @@ class PurchaseAgreement(BaseModel):
     buyer_name: Optional[str] = None
     seller_name: Optional[str] = None
     property_address: Optional[str] = None
-    agreement_value: Optional[str] = None
+    agreement_value: Amount = None
     agreement_date: Optional[str] = None
     possession_date: Optional[str] = None
 
@@ -191,7 +212,7 @@ class OfferLetter(BaseModel):
     employee_name: Optional[str] = None
     employer_name: Optional[str] = None
     designation: Optional[str] = None
-    ctc: Optional[str] = None
+    ctc: Amount = None
     joining_date: Optional[str] = None
 
 
@@ -199,7 +220,7 @@ class PromotionLetter(BaseModel):
     employee_name: Optional[str] = None
     company_name: Optional[str] = None
     new_designation: Optional[str] = None
-    revised_salary: Optional[str] = None
+    revised_salary: Amount = None
     effective_date: Optional[str] = None
 
 
