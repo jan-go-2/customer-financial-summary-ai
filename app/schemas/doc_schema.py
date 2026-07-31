@@ -1,6 +1,8 @@
 import re
+import datetime as _dt
 from typing import Annotated, Optional
 from pydantic import BaseModel, BeforeValidator
+from dateutil import parser as _date_parser
 
 
 _NUMBER_PATTERN = re.compile(r"-?\d[\d,]*(?:\.\d+)?")
@@ -33,6 +35,97 @@ def _clean_amount(value):
 Amount = Annotated[Optional[float], BeforeValidator(_clean_amount)]
 
 
+# Full ISO-ish date, unambiguous because the year comes first: YYYY-MM-DD or YYYY/MM/DD.
+_ISO_DATE_PATTERN = re.compile(r"^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$")
+
+# Year + one more numeric group: YYYY-MM or MM-YYYY.
+_YEAR_MONTH_PATTERN = re.compile(r"^(\d{4})[-/](\d{1,2})$")
+_MONTH_YEAR_NUMERIC_PATTERN = re.compile(r"^(\d{1,2})[-/](\d{4})$")
+
+# "2022-23", "FY2022-23" style financial-year ranges -- left untouched, since
+# "23" here means "year '23", not a month or day.
+_YEAR_RANGE_PATTERN = re.compile(r"^(?:FY\s*)?\d{4}\s*[-/]\s*\d{2,4}$", re.IGNORECASE)
+
+# Bare 4-digit year, e.g. "2022".
+_YEAR_ONLY_PATTERN = re.compile(r"^\d{4}$")
+
+# Month name + year, e.g. "July 2022", "Jul. 2022".
+_MONTH_NAME_YEAR_PATTERN = re.compile(r"^[A-Za-z]+\.?\s+\d{4}$")
+
+
+def _clean_date(value):
+    """Normalize messy LLM date output to ISO 'YYYY-MM-DD'.
+
+    - Month + year only (e.g. "July 2022", "2022-07") -> day defaults to 01:
+      "2022-07-01"
+    - Year only (e.g. "2022") -> month and day default to 01: "2022-01-01"
+    - Year-range/FY style (e.g. "2022-23") -> left unchanged, since it isn't
+      a single calendar date at all
+    - Any other recognizable date -> normalized to "YYYY-MM-DD" (day-first,
+      since that's the common convention in Indian documents)
+    - Anything that isn't a real date (missing, "N/A", garbled OCR text,
+      etc.) -> None, same philosophy as _clean_amount: a null date is
+      normal LLM output, a crash isn't, and keeping junk text around isn't
+      useful either
+    """
+    if value is None:
+        return None
+    if isinstance(value, (_dt.date, _dt.datetime)):
+        return value.strftime("%Y-%m-%d")
+    if not isinstance(value, str):
+        return None
+
+    text = value.strip()
+    if not text:
+        return None
+
+    # Already unambiguous YYYY-MM-DD / YYYY/MM/DD -- parse directly rather
+    # than through dateutil, which can otherwise flip month/day here.
+    m = _ISO_DATE_PATTERN.match(text)
+    if m:
+        year, month, day = int(m.group(1)), int(m.group(2)), int(m.group(3))
+        try:
+            return _dt.date(year, month, day).strftime("%Y-%m-%d")
+        except ValueError:
+            return None
+
+    m = _YEAR_MONTH_PATTERN.match(text)  # YYYY-MM
+    if m:
+        year, month = int(m.group(1)), int(m.group(2))
+        if 1 <= month <= 12:
+            return f"{year:04d}-{month:02d}-01"
+        return text  # second part isn't a valid month -> treat as FY range
+
+    m = _MONTH_YEAR_NUMERIC_PATTERN.match(text)  # MM-YYYY
+    if m:
+        month, year = int(m.group(1)), int(m.group(2))
+        if 1 <= month <= 12:
+            return f"{year:04d}-{month:02d}-01"
+        # falls through to generic parsing below if not a valid month
+
+    if _YEAR_RANGE_PATTERN.match(text):
+        return text
+
+    if _YEAR_ONLY_PATTERN.match(text):
+        return f"{text}-01-01"
+
+    if _MONTH_NAME_YEAR_PATTERN.match(text):
+        try:
+            parsed = _date_parser.parse(text, default=_dt.datetime(1900, 1, 1))
+            return parsed.strftime("%Y-%m-01")
+        except (ValueError, OverflowError, TypeError):
+            return None
+
+    try:
+        parsed = _date_parser.parse(text, dayfirst=True, fuzzy=True)
+        return parsed.strftime("%Y-%m-%d")
+    except (ValueError, OverflowError, TypeError):
+        return None
+
+
+Date = Annotated[Optional[str], BeforeValidator(_clean_date)]
+
+
 # ============================================================
 # Income Documents
 # ============================================================
@@ -62,7 +155,7 @@ class IncomeTaxReturn(BaseModel):
     assessment_year: Optional[str] = None
     total_income: Amount = None
     tax_paid: Amount = None
-    filing_date: Optional[str] = None
+    filing_date: Date = None
 
 
 class BonusLetter(BaseModel):
@@ -70,7 +163,7 @@ class BonusLetter(BaseModel):
     company_name: Optional[str] = None
     bonus_amount: Amount = None
     financial_year: Optional[str] = None
-    bonus_date: Optional[str] = None
+    bonus_date: Date = None
 
 
 # ============================================================
@@ -94,8 +187,8 @@ class FixedDepositReceipt(BaseModel):
     bank_name: Optional[str] = None
     fd_number: Optional[str] = None
     deposit_amount: Amount = None
-    deposit_date: Optional[str] = None
-    maturity_date: Optional[str] = None
+    deposit_date: Date = None
+    maturity_date: Date = None
     interest_rate: Amount = None
 
 
@@ -109,7 +202,7 @@ class MutualFundStatement(BaseModel):
     fund_name: Optional[str] = None
     units_held: Amount = None
     holdings_value: Amount = None
-    statement_date: Optional[str] = None
+    statement_date: Date = None
 
 
 class DematStatement(BaseModel):
@@ -117,7 +210,7 @@ class DematStatement(BaseModel):
     dp_id: Optional[str] = None
     client_id: Optional[str] = None
     holdings_value: Amount = None
-    statement_date: Optional[str] = None
+    statement_date: Date = None
 
 
 class InsurancePolicy(BaseModel):
@@ -126,8 +219,8 @@ class InsurancePolicy(BaseModel):
     insurer_name: Optional[str] = None
     sum_assured: Amount = None
     premium_amount: Amount = None
-    policy_start_date: Optional[str] = None
-    policy_end_date: Optional[str] = None
+    policy_start_date: Date = None
+    policy_end_date: Date = None
 
 
 # ============================================================
@@ -140,7 +233,7 @@ class HomeLoanStatement(BaseModel):
     loan_account_number: Optional[str] = None
     outstanding_amount: Amount = None
     emi_amount: Amount = None
-    loan_start_date: Optional[str] = None
+    loan_start_date: Date = None
     tenure: Optional[str] = None
 
 
@@ -159,7 +252,7 @@ class CreditCardStatement(BaseModel):
     outstanding_amount: Amount = None
     credit_limit: Amount = None
     minimum_due: Amount = None
-    statement_date: Optional[str] = None
+    statement_date: Date = None
 
 
 # ============================================================
@@ -173,13 +266,13 @@ class PropertySaleDeed(BaseModel):
     buyer_name: Optional[str] = None
     buyer_address: Optional[str] = None
     buyer_aadhaar_number: Optional[str] = None
-    agreement_date: Optional[str] = None
+    agreement_date: Date = None
     property_type: Optional[str] = None
     property_address: Optional[str] = None
     plot_area: Optional[str] = None  # kept as str -- usually includes a unit (sq ft/sq yd), converting to float alone loses that
     property_status: Optional[str] = None
     sale_consideration: Amount = None
-    possession_date: Optional[str] = None
+    possession_date: Date = None
     jurisdiction: Optional[str] = None
     registration_number: Optional[str] = None
     survey_number: Optional[str] = None
@@ -192,8 +285,8 @@ class PurchaseAgreement(BaseModel):
     seller_name: Optional[str] = None
     property_address: Optional[str] = None
     agreement_value: Amount = None
-    agreement_date: Optional[str] = None
-    possession_date: Optional[str] = None
+    agreement_date: Date = None
+    possession_date: Date = None
 
 
 class InheritanceDocument(BaseModel):
@@ -201,7 +294,7 @@ class InheritanceDocument(BaseModel):
     deceased_name: Optional[str] = None
     relationship: Optional[str] = None
     inherited_asset_details: Optional[str] = None
-    date_of_inheritance: Optional[str] = None
+    date_of_inheritance: Date = None
 
 
 # ============================================================
@@ -213,7 +306,7 @@ class OfferLetter(BaseModel):
     employer_name: Optional[str] = None
     designation: Optional[str] = None
     ctc: Amount = None
-    joining_date: Optional[str] = None
+    joining_date: Date = None
 
 
 class PromotionLetter(BaseModel):
@@ -221,15 +314,15 @@ class PromotionLetter(BaseModel):
     company_name: Optional[str] = None
     new_designation: Optional[str] = None
     revised_salary: Amount = None
-    effective_date: Optional[str] = None
+    effective_date: Date = None
 
 
 class ExperienceLetter(BaseModel):
     employee_name: Optional[str] = None
     company_name: Optional[str] = None
     designation: Optional[str] = None
-    date_of_joining: Optional[str] = None
-    date_of_relieving: Optional[str] = None
+    date_of_joining: Date = None
+    date_of_relieving: Date = None
     employment_duration: Optional[str] = None
 
 
@@ -241,7 +334,7 @@ class IdentityDocument(BaseModel):
     """Generic/combined identity model -- kept for backward compatibility.
     For new work, prefer the specific PanCard / AadhaarCard models below."""
     name: Optional[str] = None
-    date_of_birth: Optional[str] = None
+    date_of_birth: Date = None
     pan_number: Optional[str] = None
     aadhaar_number: Optional[str] = None
     address: Optional[str] = None
@@ -251,13 +344,13 @@ class PanCard(BaseModel):
     name: Optional[str] = None
     father_name: Optional[str] = None
     pan_number: Optional[str] = None
-    date_of_birth: Optional[str] = None
+    date_of_birth: Date = None
 
 
 class AadhaarCard(BaseModel):
     name: Optional[str] = None
     aadhaar_number: Optional[str] = None
-    date_of_birth: Optional[str] = None
+    date_of_birth: Date = None
     gender: Optional[str] = None
     address: Optional[str] = None
 
@@ -270,14 +363,14 @@ class PowerOfAttorney(BaseModel):
     grantor_name: Optional[str] = None
     attorney_name: Optional[str] = None
     authorized_powers: Optional[str] = None
-    execution_date: Optional[str] = None
+    execution_date: Date = None
     jurisdiction: Optional[str] = None
 
 
 class Affidavit(BaseModel):
     deponent_name: Optional[str] = None
     declaration_summary: Optional[str] = None
-    execution_date: Optional[str] = None
+    execution_date: Date = None
     notary_details: Optional[str] = None
 
 
