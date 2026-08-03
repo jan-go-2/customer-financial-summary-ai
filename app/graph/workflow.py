@@ -97,7 +97,7 @@ def classifier_node(state: GraphState) -> Dict[str, Any]:
     for file_path in validated_files:
         try:
             classification_res = classify_document(file_path)
-            classified_docs.append(classification_res.model_dump())
+            classified_docs.append(classification_res)
         except Exception as e:
             errors.append(f"Classification skipped/failed for '{file_path}': {e}")
             classified_docs.append({

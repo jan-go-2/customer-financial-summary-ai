@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import date
-from typing import Callable, Dict, List, Optional
+from typing import Callable, Dict, List
 
 from app.schemas.timeline import (
     TimelineEvent,
@@ -18,7 +18,7 @@ def build_timeline(
 
     Assumptions:
     - Extraction returns dates in ISO format (YYYY-MM-DD).
-    - Timeline is responsible only for creating and ordering events.
+    - One document may generate multiple timeline events.
     """
 
     events: List[TimelineEvent] = []
@@ -31,10 +31,10 @@ def build_timeline(
         if not builder:
             continue
 
-        event = builder(document)
+        document_events = builder(document)
 
-        if event:
-            events.append(event)
+        if document_events:
+            events.extend(document_events)
 
     events.sort(
         key=lambda event: event.event_date or date.max
@@ -47,29 +47,27 @@ def build_timeline(
 # Salary
 # -------------------------------------------------------------------------
 
-def build_salary_event(
-    document: Dict,
-) -> Optional[TimelineEvent]:
+def build_salary_event(document: Dict) -> List[TimelineEvent]:
 
     data = document.get("extracted_data", {})
 
-    return TimelineEvent(
-        event_type=EventType.SALARY_RECEIVED,
-        event_date=data.get("pay_period"),
-        description=f"Salary received from {data.get('company_name', 'Unknown Company')}",
-        source_document=document.get("file_path", ""),
-        confidence_score=document.get("confidence_score", 0.0),
-        metadata=data,
-    )
+    return [
+        TimelineEvent(
+            event_type=EventType.SALARY_RECEIVED,
+            event_date=data.get("pay_period"),
+            description=f"Salary received from {data.get('company_name', 'Unknown Company')}",
+            source_document=document.get("file_path", ""),
+            confidence_score=document.get("confidence_score", 0.0),
+            metadata=data,
+        )
+    ]
 
 
 # -------------------------------------------------------------------------
 # Property Purchase
 # -------------------------------------------------------------------------
 
-def build_property_purchase_event(
-    document: Dict,
-) -> Optional[TimelineEvent]:
+def build_property_purchase_event(document: Dict) -> List[TimelineEvent]:
 
     data = document.get("extracted_data", {})
 
@@ -78,23 +76,23 @@ def build_property_purchase_event(
         "Unknown Property",
     )
 
-    return TimelineEvent(
-        event_type=EventType.PROPERTY_PURCHASED,
-        event_date=data.get("agreement_date"),
-        description=f"Property purchased ({property_name})",
-        source_document=document.get("file_path", ""),
-        confidence_score=document.get("confidence_score", 0.0),
-        metadata=data,
-    )
+    return [
+        TimelineEvent(
+            event_type=EventType.PROPERTY_PURCHASED,
+            event_date=data.get("agreement_date"),
+            description=f"Property purchased ({property_name})",
+            source_document=document.get("file_path", ""),
+            confidence_score=document.get("confidence_score", 0.0),
+            metadata=data,
+        )
+    ]
 
 
 # -------------------------------------------------------------------------
 # Property Sale
 # -------------------------------------------------------------------------
 
-def build_property_sale_event(
-    document: Dict,
-) -> Optional[TimelineEvent]:
+def build_property_sale_event(document: Dict) -> List[TimelineEvent]:
 
     data = document.get("extracted_data", {})
 
@@ -103,55 +101,91 @@ def build_property_sale_event(
         "Unknown Property",
     )
 
-    return TimelineEvent(
-        event_type=EventType.PROPERTY_SOLD,
-        event_date=data.get("agreement_date"),
-        description=f"Property sold ({property_name})",
-        source_document=document.get("file_path", ""),
-        confidence_score=document.get("confidence_score", 0.0),
-        metadata=data,
-    )
+    return [
+        TimelineEvent(
+            event_type=EventType.PROPERTY_SOLD,
+            event_date=data.get("agreement_date"),
+            description=f"Property sold ({property_name})",
+            source_document=document.get("file_path", ""),
+            confidence_score=document.get("confidence_score", 0.0),
+            metadata=data,
+        )
+    ]
 
 
 # -------------------------------------------------------------------------
 # Inheritance
 # -------------------------------------------------------------------------
 
-def build_inheritance_event(
-    document: Dict,
-) -> Optional[TimelineEvent]:
+def build_inheritance_event(document: Dict) -> List[TimelineEvent]:
 
     data = document.get("extracted_data", {})
 
-    return TimelineEvent(
-        event_type=EventType.INHERITANCE_RECEIVED,
-        event_date=data.get("date_of_inheritance"),
-        description=f"Inheritance received from {data.get('deceased_name', 'Unknown')}",
-        source_document=document.get("file_path", ""),
-        confidence_score=document.get("confidence_score", 0.0),
-        metadata=data,
-    )
+    return [
+        TimelineEvent(
+            event_type=EventType.INHERITANCE_RECEIVED,
+            event_date=data.get("date_of_inheritance"),
+            description=f"Inheritance received from {data.get('deceased_name', 'Unknown')}",
+            source_document=document.get("file_path", ""),
+            confidence_score=document.get("confidence_score", 0.0),
+            metadata=data,
+        )
+    ]
 
 
 # -------------------------------------------------------------------------
 # Relieving Letter
 # -------------------------------------------------------------------------
 
-def build_relieving_event(
-    document: Dict,
-) -> Optional[TimelineEvent]:
+def build_relieving_event(document: Dict) -> List[TimelineEvent]:
 
     data = document.get("extracted_data", {})
 
-    return TimelineEvent(
-        event_type=EventType.OTHER,
-        event_date=data.get("relieving_date"),
-        description=f"Employment ended at {data.get('company_name', 'Unknown Company')}",
-        source_document=document.get("file_path", ""),
-        confidence_score=document.get("confidence_score", 0.0),
-        metadata=data,
-    )
+    company = data.get("company_name", "Unknown Company")
+    designation = data.get("designation", "Employee")
 
+    return [
+        TimelineEvent(
+            event_type=EventType.EMPLOYMENT_STARTED,
+            event_date=data.get("date_of_joining"),
+            description=f"Joined {company} as {designation}",
+            source_document=document.get("file_path", ""),
+            confidence_score=document.get("confidence_score", 0.0),
+            metadata=data,
+        ),
+        TimelineEvent(
+            event_type=EventType.EMPLOYMENT_ENDED,
+            event_date=data.get("relieving_date"),
+            description=f"Employment ended at {company}",
+            source_document=document.get("file_path", ""),
+            confidence_score=document.get("confidence_score", 0.0),
+            metadata=data,
+        ),
+    ]
+
+
+def build_bank_statement_event(
+    document: Dict,
+) -> List[TimelineEvent]:
+
+    data = document.get("extracted_data", {})
+
+    period = data.get("statement_period")
+
+    start_date = None
+    if period and " - " in period:
+        start_date = period.split(" - ")[0]
+
+    return [
+        TimelineEvent(
+            event_type=EventType.BANK_STATEMENT,
+            event_date=start_date,
+            description="Bank statement available",
+            source_document=document.get("file_path", ""),
+            confidence_score=document.get("confidence_score", 0.0),
+            metadata=data,
+        )
+    ]
 
 # -------------------------------------------------------------------------
 # Registry
@@ -159,7 +193,7 @@ def build_relieving_event(
 
 EVENT_BUILDERS: Dict[
     str,
-    Callable[[Dict], Optional[TimelineEvent]]
+    Callable[[Dict], List[TimelineEvent]]
 ] = {
     # Income
     "salary_slip": build_salary_event,
@@ -174,4 +208,5 @@ EVENT_BUILDERS: Dict[
 
     # Employment
     "relieving_letter": build_relieving_event,
+    "bank_statement": build_bank_statement_event, 
 }
