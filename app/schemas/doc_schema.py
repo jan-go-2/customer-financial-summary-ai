@@ -52,6 +52,12 @@ _YEAR_ONLY_PATTERN = re.compile(r"^\d{4}$")
 # Month name + year, e.g. "July 2022", "Jul. 2022".
 _MONTH_NAME_YEAR_PATTERN = re.compile(r"^[A-Za-z]+\.?\s+\d{4}$")
 
+Date = Annotated[Optional[str], BeforeValidator(_clean_date)]
+
+
+# ============================================================
+# Income Documents
+# ============================================================
 
 def _clean_date(value):
     """Normalize messy LLM date output to ISO 'YYYY-MM-DD'.
@@ -137,8 +143,127 @@ class SalarySlip(BaseModel):
     net_salary: Amount = None
     deductions: Amount = None
     provident_fund: Amount = None
-    pay_period: Optional[str] = None
+    pay_period: Date = None
 
+
+class Form16(BaseModel):
+    employee_name: Optional[str] = None
+    employer_name: Optional[str] = None
+    pan_number: Optional[str] = None
+    assessment_year: Optional[str] = None
+    annual_income: Amount = None
+    tax_deducted: Amount = None
+
+
+class IncomeTaxReturn(BaseModel):
+    assessee_name: Optional[str] = None
+    pan_number: Optional[str] = None
+    assessment_year: Optional[str] = None
+    total_income: Amount = None
+    tax_paid: Amount = None
+    filing_date: Date = None
+
+
+class BonusLetter(BaseModel):
+    employee_name: Optional[str] = None
+    company_name: Optional[str] = None
+    bonus_amount: Amount = None
+    financial_year: Optional[str] = None
+    bonus_date: Date = None
+
+
+# ============================================================
+# Banking Documents
+# ============================================================
+
+class BankStatement(BaseModel):
+    account_holder_name: Optional[str] = None
+    account_number: Optional[str] = None
+    bank_name: Optional[str] = None
+    statement_period: Optional[str] = None
+    total_credits: Amount = None
+    total_debits: Amount = None
+    average_balance: Amount = None
+    salary_credits: Amount = None
+    emi_debits: Amount = None
+
+
+class FixedDepositReceipt(BaseModel):
+    depositor_name: Optional[str] = None
+    bank_name: Optional[str] = None
+    fd_number: Optional[str] = None
+    deposit_amount: Amount = None
+    deposit_date: Date = None
+    maturity_date: Date = None
+    interest_rate: Amount = None
+
+
+# ============================================================
+# Asset Documents
+# ============================================================
+
+class MutualFundStatement(BaseModel):
+    investor_name: Optional[str] = None
+    folio_number: Optional[str] = None
+    fund_name: Optional[str] = None
+    units_held: Amount = None
+    holdings_value: Amount = None
+    statement_date: Date = None
+
+
+class DematStatement(BaseModel):
+    account_holder_name: Optional[str] = None
+    dp_id: Optional[str] = None
+    client_id: Optional[str] = None
+    holdings_value: Amount = None
+    statement_date: Date = None
+
+
+class InsurancePolicy(BaseModel):
+    policy_holder_name: Optional[str] = None
+    policy_number: Optional[str] = None
+    insurer_name: Optional[str] = None
+    sum_assured: Amount = None
+    premium_amount: Amount = None
+    policy_start_date: Date = None
+    policy_end_date: Date = None
+
+
+# ============================================================
+# Liability Documents
+# ============================================================
+
+class HomeLoanStatement(BaseModel):
+    borrower_name: Optional[str] = None
+    lender_name: Optional[str] = None
+    loan_account_number: Optional[str] = None
+    outstanding_amount: Amount = None
+    emi_amount: Amount = None
+    loan_start_date: Date = None
+    tenure: Optional[str] = None
+
+
+class CarLoanStatement(BaseModel):
+    borrower_name: Optional[str] = None
+    lender_name: Optional[str] = None
+    loan_account_number: Optional[str] = None
+    outstanding_amount: Amount = None
+    emi_amount: Amount = None
+
+
+class CreditCardStatement(BaseModel):
+    card_holder_name: Optional[str] = None
+    card_number_masked: Optional[str] = None
+    issuing_bank: Optional[str] = None
+    outstanding_amount: Amount = None
+    credit_limit: Amount = None
+    minimum_due: Amount = None
+    statement_date: Date = None
+
+
+# ============================================================
+# Property Documents
+# ============================================================
 
 class Form16(BaseModel):
     employee_name: Optional[str] = None
@@ -326,6 +451,18 @@ class ExperienceLetter(BaseModel):
     employment_duration: Optional[str] = None
 
 
+class RelievingLetter(BaseModel):
+    """Issued when an employee exits an organization -- distinct from
+    ExperienceLetter, which summarizes the full tenure worked."""
+    employee_name: Optional[str] = None
+    company_name: Optional[str] = None
+    designation: Optional[str] = None
+    date_of_joining: Date = None
+    last_working_day: Date = None
+    relieving_date: Date = None
+    reason_for_leaving: Optional[str] = None
+
+
 # ============================================================
 # Identity Documents
 # ============================================================
@@ -374,6 +511,37 @@ class Affidavit(BaseModel):
     notary_details: Optional[str] = None
 
 
+class LastWillTestament(BaseModel):
+    """A will -- specifies how a person's assets are to be distributed
+    after death. Distinct from InheritanceDocument, which records an
+    heir's already-received inheritance rather than the testator's
+    distribution instructions."""
+    testator_name: Optional[str] = None
+    beneficiaries: Optional[str] = None
+    executor_name: Optional[str] = None
+    asset_details: Optional[str] = None
+    execution_date: Date = None
+    witness_1: Optional[str] = None
+    witness_2: Optional[str] = None
+    registration_number: Optional[str] = None
+
+
+class GuardianConsentKYCDeclaration(BaseModel):
+    """Combined guardian-consent + KYC-declaration document (e.g. for a
+    minor's account/investment). Kept as a single schema per current
+    requirements -- split into separate GuardianConsentForm and
+    KYCDeclaration schemas later if the two ever need to be tracked
+    independently."""
+    guardian_name: Optional[str] = None
+    minor_name: Optional[str] = None
+    relationship_to_minor: Optional[str] = None
+    customer_name: Optional[str] = None
+    identity_number: Optional[str] = None
+    consent_date: Date = None
+    declaration_date: Date = None
+    declaration_summary: Optional[str] = None
+
+
 # ============================================================
 # Registry -- add a new document type here after defining its model above
 # ============================================================
@@ -408,6 +576,7 @@ DOC_TYPE_SCHEMAS = {
     "offer_letter": OfferLetter,
     "promotion_letter": PromotionLetter,
     "experience_letter": ExperienceLetter,
+    "relieving_letter": RelievingLetter,
 
     # Identity Documents
     "identity_document": IdentityDocument,   # generic/combined, kept for backward compatibility
@@ -417,4 +586,6 @@ DOC_TYPE_SCHEMAS = {
     # Legal Documents
     "power_of_attorney": PowerOfAttorney,
     "affidavit": Affidavit,
+    "last_will_testament": LastWillTestament,
+    "guardian_consent_kyc_declaration": GuardianConsentKYCDeclaration,
 }
