@@ -74,9 +74,27 @@ if uploaded_files:
                         st.warning("⚠️ Invalid / Skipped Documents Found")
                         df_invalid = pd.DataFrame(invalid_files)
                         st.dataframe(df_invalid, use_container_width=True)
+                                    # -----------------------------
+                    # Narration Report
+                    # -----------------------------
+                    narration = workflow_res.get("narration")
+
+                    if narration:
+                        st.subheader("📄 Customer Financial Summary")
+
+                        with st.expander("👀 Preview Report"):
+                            st.markdown(narration)
+
+                        st.download_button(
+                            label="⬇️ Download Report",
+                            data=narration,
+                            file_name="customer_financial_summary.txt",
+                            mime="text/plain"
+                        )
 
                     with st.expander("🔍 View Raw JSON Response"):
                         st.json(data)
+                    
                 else:
                     st.error(f"Upload Failed (Status Code: {response.status_code})")
                     try:

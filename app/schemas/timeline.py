@@ -11,6 +11,7 @@ class EventType(str, Enum):
     PROPERTY_SOLD = "property_sold"
     BUSINESS_ACTIVITY = "business_activity"
     INHERITANCE_RECEIVED = "inheritance_received"
+    EMPLOYMENT_ENDED = "employment_ended"
     OTHER = "other"
 
 
