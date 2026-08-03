@@ -52,6 +52,12 @@ _YEAR_ONLY_PATTERN = re.compile(r"^\d{4}$")
 # Month name + year, e.g. "July 2022", "Jul. 2022".
 _MONTH_NAME_YEAR_PATTERN = re.compile(r"^[A-Za-z]+\.?\s+\d{4}$")
 
+Date = Annotated[Optional[str], BeforeValidator(_clean_date)]
+
+
+# ============================================================
+# Income Documents
+# ============================================================
 
 def _clean_date(value):
     """Normalize messy LLM date output to ISO 'YYYY-MM-DD'.
@@ -139,6 +145,125 @@ class SalarySlip(BaseModel):
     provident_fund: Amount = None
     pay_period: Date = None
 
+
+class Form16(BaseModel):
+    employee_name: Optional[str] = None
+    employer_name: Optional[str] = None
+    pan_number: Optional[str] = None
+    assessment_year: Optional[str] = None
+    annual_income: Amount = None
+    tax_deducted: Amount = None
+
+
+class IncomeTaxReturn(BaseModel):
+    assessee_name: Optional[str] = None
+    pan_number: Optional[str] = None
+    assessment_year: Optional[str] = None
+    total_income: Amount = None
+    tax_paid: Amount = None
+    filing_date: Date = None
+
+
+class BonusLetter(BaseModel):
+    employee_name: Optional[str] = None
+    company_name: Optional[str] = None
+    bonus_amount: Amount = None
+    financial_year: Optional[str] = None
+    bonus_date: Date = None
+
+
+# ============================================================
+# Banking Documents
+# ============================================================
+
+class BankStatement(BaseModel):
+    account_holder_name: Optional[str] = None
+    account_number: Optional[str] = None
+    bank_name: Optional[str] = None
+    statement_period: Optional[str] = None
+    total_credits: Amount = None
+    total_debits: Amount = None
+    average_balance: Amount = None
+    salary_credits: Amount = None
+    emi_debits: Amount = None
+
+
+class FixedDepositReceipt(BaseModel):
+    depositor_name: Optional[str] = None
+    bank_name: Optional[str] = None
+    fd_number: Optional[str] = None
+    deposit_amount: Amount = None
+    deposit_date: Date = None
+    maturity_date: Date = None
+    interest_rate: Amount = None
+
+
+# ============================================================
+# Asset Documents
+# ============================================================
+
+class MutualFundStatement(BaseModel):
+    investor_name: Optional[str] = None
+    folio_number: Optional[str] = None
+    fund_name: Optional[str] = None
+    units_held: Amount = None
+    holdings_value: Amount = None
+    statement_date: Date = None
+
+
+class DematStatement(BaseModel):
+    account_holder_name: Optional[str] = None
+    dp_id: Optional[str] = None
+    client_id: Optional[str] = None
+    holdings_value: Amount = None
+    statement_date: Date = None
+
+
+class InsurancePolicy(BaseModel):
+    policy_holder_name: Optional[str] = None
+    policy_number: Optional[str] = None
+    insurer_name: Optional[str] = None
+    sum_assured: Amount = None
+    premium_amount: Amount = None
+    policy_start_date: Date = None
+    policy_end_date: Date = None
+
+
+# ============================================================
+# Liability Documents
+# ============================================================
+
+class HomeLoanStatement(BaseModel):
+    borrower_name: Optional[str] = None
+    lender_name: Optional[str] = None
+    loan_account_number: Optional[str] = None
+    outstanding_amount: Amount = None
+    emi_amount: Amount = None
+    loan_start_date: Date = None
+    tenure: Optional[str] = None
+
+
+class CarLoanStatement(BaseModel):
+    borrower_name: Optional[str] = None
+    lender_name: Optional[str] = None
+    loan_account_number: Optional[str] = None
+    outstanding_amount: Amount = None
+    emi_amount: Amount = None
+
+
+class CreditCardStatement(BaseModel):
+    card_holder_name: Optional[str] = None
+    card_number_masked: Optional[str] = None
+    issuing_bank: Optional[str] = None
+    outstanding_amount: Amount = None
+    credit_limit: Amount = None
+    minimum_due: Amount = None
+    statement_date: Date = None
+
+
+# ============================================================
+# Property Documents
+# ============================================================
 
 class Form16(BaseModel):
     employee_name: Optional[str] = None
