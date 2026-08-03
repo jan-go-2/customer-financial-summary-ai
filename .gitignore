@@ -16,5 +16,5 @@ __pycache__/
 # VS Code
 .vscode/
 
-# PyCharm
-.idea/
+# Uploaded Documents
+uploaded_documents/

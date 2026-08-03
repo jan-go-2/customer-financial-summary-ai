@@ -1,14 +1,15 @@
 from typing import List, Dict, Any, Optional
 from typing_extensions import TypedDict
+from app.schemas.timeline import TimelineEvent
 
 
 class GraphState(TypedDict):
-    """
-    Represents the shared state of the customer financial summary LangGraph workflow.
-    """
     file_paths: List[str]
+    provider: str
     validation_results: Optional[Dict[str, Any]]
     validated_files: List[str]
     classified_documents: List[Dict[str, Any]]
+    extracted_documents: List[Dict[str, Any]]
+    timeline: List[TimelineEvent]
     errors: List[str]
     status: str

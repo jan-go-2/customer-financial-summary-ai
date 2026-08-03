@@ -1,7 +1,11 @@
-from fastapi import APIRouter, UploadFile, File
-from typing import List
-from pathlib import Path
 import shutil
+import tempfile
+from pathlib import Path
+from typing import List
+
+from fastapi import APIRouter, File, HTTPException, UploadFile
+
+from app.graph.workflow import run_financial_summary_pipeline, run_pipeline
 
 router = APIRouter()
 
@@ -11,31 +15,24 @@ UPLOAD_DIR.mkdir(exist_ok=True)
 
 @router.post("/upload")
 async def upload_documents(files: List[UploadFile] = File(...)):
-
-    uploaded_files = []
+    uploaded_file_paths = []
+    file_names = []
 
     for file in files:
-
         file_path = UPLOAD_DIR / file.filename
-
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
 
-        uploaded_files.append(file.filename)
+        uploaded_file_paths.append(str(file_path))
+        file_names.append(file.filename)
+
+    workflow_result = run_financial_summary_pipeline(uploaded_file_paths)
 
     return {
         "message": "Documents uploaded successfully.",
-        "files": uploaded_files
+        "files": file_names,
+        "workflow_result": workflow_result
     }
-
-import shutil
-import tempfile
-
-from fastapi import APIRouter, File, HTTPException, UploadFile
-
-from app.graph.workflow import run_pipeline
-
-router = APIRouter()
 
 
 @router.post("/extract")
@@ -51,6 +48,7 @@ async def extract_document(file: UploadFile = File(...), provider: str = "groq")
 
     return {
         "doc_type": result.get("doc_type"),
+        "category": result.get("category"),
         "confidence": result.get("classification_confidence"),
         "extracted_data": result.get("extracted_data"),
         "narrative": result.get("narrative"),
