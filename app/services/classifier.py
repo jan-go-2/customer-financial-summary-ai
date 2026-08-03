@@ -1,7 +1,7 @@
 import os
 import logging
 import json
-from typing import Literal, Tuple, Optional, List, Dict, Any
+from typing import Literal, Tuple, Optional, Dict, Any
 from pydantic import BaseModel, Field
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 import fitz  # PyMuPDF
@@ -80,7 +80,7 @@ def extract_document_info(file_path: str, max_pages: int = 3) -> Tuple[str, int]
             for sheet_name in sheet_names[:max_pages]:
                 df = pd.read_excel(excel_file, sheet_name=sheet_name, nrows=10)
                 columns_str = ", ".join([str(col) for col in df.columns])
-                
+
                 extracted_summary.append(f"--- Sheet: '{sheet_name}' ---")
                 extracted_summary.append(f"Column Headers: [{columns_str}]")
                 extracted_summary.append("Sample Data (First few rows):")
@@ -173,20 +173,5 @@ def classify_document(
     logger.info(f"Classified '{file_path}' as {result.document_type} ({result.category})")
 
     return result.model_dump()
-
-
-def classify_documents(file_paths: List[str], api_key: Optional[str] = None) -> List[Dict[str, Any]]:
-    """Classifies multiple PDF or Excel documents and returns a list of dictionaries."""
-    client = _get_genai_client(api_key)
-    results: List[Dict[str, Any]] = []
-
-    for path in file_paths:
-        try:
-            res_dict = classify_document(file_path=path, client=client)
-            results.append(res_dict)
-        except Exception as e:
-            logger.error(f"Skipping file '{path}' due to error: {e}")
-
-    return results
 
 
