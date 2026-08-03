@@ -5,6 +5,7 @@ from typing import Literal, Tuple, Optional, List, Dict, Any
 from pydantic import BaseModel, Field
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 import fitz  # PyMuPDF
+import pandas as pd
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
@@ -43,7 +44,7 @@ class DocumentClassificationResult(BaseModel):
     document_type: DocumentType = Field(description="The specific type of the document")
     category: Category = Field(description="The broader functional category of the document")
     confidence_score: float = Field(description="Confidence score between 0.0 and 1.0")
-    page_count: int = Field(description="Total number of pages in the PDF")
+    page_count: int = Field(description="Total number of pages (PDF) or sheets (Excel)")
 
 
 # ------------------------------------------------------------------
@@ -56,19 +57,43 @@ def _get_genai_client(api_key: Optional[str] = None) -> genai.Client:
     return genai.Client(api_key=key)
 
 
-def extract_pdf_info(file_path: str, max_pages: int = 3) -> Tuple[str, int]:
+def extract_document_info(file_path: str, max_pages: int = 3) -> Tuple[str, int]:
+    """
+    Extracts headers, columns, sample rows, or text content from PDF and Excel (.xlsx, .xls) files.
+    """
     ext = os.path.splitext(file_path)[1].lower()
 
-    # Handle text or CSV files safely
-    if ext in [".csv", ".txt"]:
+    # 1. Handle Excel files (.xlsx, .xls)
+    if ext in [".xlsx", ".xls"]:
         try:
-            with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
-                return f.read(3000), 1
-        except Exception as e:
-            logger.error(f"Failed reading text/csv file '{file_path}': {e}")
-            return f"[FILE: {os.path.basename(file_path)}]", 1
+            excel_file = pd.ExcelFile(file_path)
+            sheet_names = excel_file.sheet_names
+            sheet_count = len(sheet_names)
 
-    # Extract text from PDF documents
+            extracted_summary = [
+                f"Excel Document: {os.path.basename(file_path)}",
+                f"Total Sheets: {sheet_count}",
+                f"Sheet Names: {', '.join(sheet_names)}\n"
+            ]
+
+            # Inspect up to max_pages (sheets)
+            for sheet_name in sheet_names[:max_pages]:
+                df = pd.read_excel(excel_file, sheet_name=sheet_name, nrows=10)
+                columns_str = ", ".join([str(col) for col in df.columns])
+                
+                extracted_summary.append(f"--- Sheet: '{sheet_name}' ---")
+                extracted_summary.append(f"Column Headers: [{columns_str}]")
+                extracted_summary.append("Sample Data (First few rows):")
+                extracted_summary.append(df.to_string(index=False))
+                extracted_summary.append("\n")
+
+            return "\n".join(extracted_summary).strip(), sheet_count
+
+        except Exception as e:
+            logger.error(f"Failed extracting text from Excel file '{file_path}': {e}")
+            return f"[EXCEL FILE: {os.path.basename(file_path)} - UNABLE TO READ CONTENT]", 1
+
+    # 2. Handle PDF documents
     try:
         with fitz.open(file_path) as doc:
             page_count = len(doc)
@@ -94,13 +119,13 @@ def extract_pdf_info(file_path: str, max_pages: int = 3) -> Tuple[str, int]:
 )
 def _call_gemini_api(client: genai.Client, prompt: str) -> str:
     response = client.models.generate_content(
-        model="gemini-3.6-flash",  # Fixed invalid model name
+        model="gemini-3.6-flash",
         contents=prompt,
         config=types.GenerateContentConfig(
             response_mime_type="application/json",
             response_schema=DocumentClassificationResult,
             temperature=0.1,
-            system_instruction="You are an expert document classifier. Categorize documents strictly into the provided response schema."
+            system_instruction="You are an expert document classifier. Categorize documents strictly into the provided response schema based on headers, structure, and text content."
         )
     )
     return response.text
@@ -110,11 +135,11 @@ def _call_gemini_api(client: genai.Client, prompt: str) -> str:
 # Public API
 # ------------------------------------------------------------------
 def classify_document(
-    file_path: str, 
-    api_key: Optional[str] = None, 
+    file_path: str,
+    api_key: Optional[str] = None,
     client: Optional[genai.Client] = None
 ) -> Dict[str, Any]:
-    """Classifies a single PDF document and returns a dictionary."""
+    """Classifies a single PDF or Excel document and returns a dictionary."""
     if not os.path.isfile(file_path):
         raise FileNotFoundError(f"File not found: {file_path}")
 
@@ -123,19 +148,19 @@ def classify_document(
     if client is None:
         client = _get_genai_client(api_key)
 
-    text_content, page_count = extract_pdf_info(file_path)
+    text_content, page_count = extract_document_info(file_path)
 
     if not text_content:
-        logger.warning(f"No text extracted from '{file_path}'. File may be scanned or image-based.")
-        text_content = "[NO TEXT EXTRACTED - SCANNED OR IMAGE-BASED PDF]"
+        logger.warning(f"No text extracted from '{file_path}'. File may be scanned or empty.")
+        text_content = "[NO TEXT EXTRACTED]"
 
     prompt = f"""
-    Analyze the following document text and classify it.
+    Analyze the following document header, columns, and text structure to classify it accurately.
 
     File Path: {os.path.basename(file_path)}
-    Page Count: {page_count}
+    Page/Sheet Count: {page_count}
 
-    Document Text Content:
+    Document Content Summary:
     ---
     {text_content[:3000]}
     ---
@@ -146,18 +171,17 @@ def classify_document(
     result.file_path = file_path
 
     logger.info(f"Classified '{file_path}' as {result.document_type} ({result.category})")
-    
+
     return result.model_dump()
 
 
 def classify_documents(file_paths: List[str], api_key: Optional[str] = None) -> List[Dict[str, Any]]:
-    """Classifies multiple PDF documents and returns a list of dictionaries."""
+    """Classifies multiple PDF or Excel documents and returns a list of dictionaries."""
     client = _get_genai_client(api_key)
     results: List[Dict[str, Any]] = []
 
     for path in file_paths:
         try:
-            # FIXED: Calling singular classify_document instead of recursive classify_documents
             res_dict = classify_document(file_path=path, client=client)
             results.append(res_dict)
         except Exception as e:
