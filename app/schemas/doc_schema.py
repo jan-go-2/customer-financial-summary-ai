@@ -137,7 +137,11 @@ class SalarySlip(BaseModel):
     net_salary: Amount = None
     deductions: Amount = None
     provident_fund: Amount = None
+<<<<<<< HEAD
     pay_period: Optional[str] = None
+=======
+    pay_period: Date = None
+>>>>>>> 5a62ae8f8ccc2ab0ca38a5f8a100874100fe7bac
 
 
 class Form16(BaseModel):
@@ -326,6 +330,18 @@ class ExperienceLetter(BaseModel):
     employment_duration: Optional[str] = None
 
 
+class RelievingLetter(BaseModel):
+    """Issued when an employee exits an organization -- distinct from
+    ExperienceLetter, which summarizes the full tenure worked."""
+    employee_name: Optional[str] = None
+    company_name: Optional[str] = None
+    designation: Optional[str] = None
+    date_of_joining: Date = None
+    last_working_day: Date = None
+    relieving_date: Date = None
+    reason_for_leaving: Optional[str] = None
+
+
 # ============================================================
 # Identity Documents
 # ============================================================
@@ -374,6 +390,37 @@ class Affidavit(BaseModel):
     notary_details: Optional[str] = None
 
 
+class LastWillTestament(BaseModel):
+    """A will -- specifies how a person's assets are to be distributed
+    after death. Distinct from InheritanceDocument, which records an
+    heir's already-received inheritance rather than the testator's
+    distribution instructions."""
+    testator_name: Optional[str] = None
+    beneficiaries: Optional[str] = None
+    executor_name: Optional[str] = None
+    asset_details: Optional[str] = None
+    execution_date: Date = None
+    witness_1: Optional[str] = None
+    witness_2: Optional[str] = None
+    registration_number: Optional[str] = None
+
+
+class GuardianConsentKYCDeclaration(BaseModel):
+    """Combined guardian-consent + KYC-declaration document (e.g. for a
+    minor's account/investment). Kept as a single schema per current
+    requirements -- split into separate GuardianConsentForm and
+    KYCDeclaration schemas later if the two ever need to be tracked
+    independently."""
+    guardian_name: Optional[str] = None
+    minor_name: Optional[str] = None
+    relationship_to_minor: Optional[str] = None
+    customer_name: Optional[str] = None
+    identity_number: Optional[str] = None
+    consent_date: Date = None
+    declaration_date: Date = None
+    declaration_summary: Optional[str] = None
+
+
 # ============================================================
 # Registry -- add a new document type here after defining its model above
 # ============================================================
@@ -408,6 +455,7 @@ DOC_TYPE_SCHEMAS = {
     "offer_letter": OfferLetter,
     "promotion_letter": PromotionLetter,
     "experience_letter": ExperienceLetter,
+    "relieving_letter": RelievingLetter,
 
     # Identity Documents
     "identity_document": IdentityDocument,   # generic/combined, kept for backward compatibility
@@ -417,4 +465,6 @@ DOC_TYPE_SCHEMAS = {
     # Legal Documents
     "power_of_attorney": PowerOfAttorney,
     "affidavit": Affidavit,
+    "last_will_testament": LastWillTestament,
+    "guardian_consent_kyc_declaration": GuardianConsentKYCDeclaration,
 }
