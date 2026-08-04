@@ -1,7 +1,7 @@
 import re
 import datetime as _dt
 from typing import Annotated, Optional
-from pydantic import BaseModel, BeforeValidator
+from pydantic import BaseModel, BeforeValidator, Field
 from dateutil import parser as _date_parser
 
 
@@ -294,7 +294,16 @@ class InheritanceDocument(BaseModel):
     deceased_name: Optional[str] = None
     relationship: Optional[str] = None
     inherited_asset_details: Optional[str] = None
-    date_of_inheritance: Date = None
+    date_of_inheritance: Date = Field(
+        default=None,
+        description=(
+            "The date the heir actually took ownership of the asset "
+            "(e.g. date of the deceased's demise, or a date explicitly "
+            "labeled as the inheritance/transfer date). Do NOT use a Will's "
+            "execution/signing date, or an asset's acquisition/investment "
+            "date, unless the document explicitly calls it the inheritance date."
+        ),
+    )
 
 
 # ============================================================

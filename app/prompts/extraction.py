@@ -8,7 +8,15 @@ def build_prompt(document_text: str, doc_type: str) -> str:
             f"Supported: {list(DOC_TYPE_SCHEMAS.keys())}"
         )
 
-    fields = list(DOC_TYPE_SCHEMAS[doc_type].model_fields.keys())
+    model_fields = DOC_TYPE_SCHEMAS[doc_type].model_fields
+
+    field_lines = []
+    for name, info in model_fields.items():
+        if info.description:
+            field_lines.append(f"- {name}: {info.description}")
+        else:
+            field_lines.append(f"- {name}")
+    fields_block = "\n".join(field_lines)
 
     return f"""
 You are an expert KYC document extraction assistant.
@@ -16,10 +24,12 @@ You are an expert KYC document extraction assistant.
 Document Type:
 {doc_type}
 
-Extract ONLY the following fields.
+Extract ONLY the following fields. Where a field has a description, follow
+it exactly -- do not substitute a different date/value just because it's
+the closest one available in the document.
 
 Fields:
-{', '.join(fields)}
+{fields_block}
 
 Instructions:
 1. Return ONLY valid JSON.
