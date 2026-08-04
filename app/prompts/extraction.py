@@ -24,9 +24,10 @@ You are an expert KYC document extraction assistant.
 Document Type:
 {doc_type}
 
-Extract ONLY the following fields. Where a field has a description, follow
-it exactly -- do not substitute a different date/value just because it's
-the closest one available in the document.
+Extract ONLY the following fields. If a field has a description below,
+that description is the definition of the field -- follow it exactly,
+even if the document doesn't use the same words. If a field has no
+description, use your best reasonable judgment based on its name.
 
 Fields:
 {fields_block}

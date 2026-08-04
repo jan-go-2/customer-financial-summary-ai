@@ -291,17 +291,27 @@ class PurchaseAgreement(BaseModel):
 
 class InheritanceDocument(BaseModel):
     heir_name: Optional[str] = None
-    deceased_name: Optional[str] = None
+    deceased_name: Optional[str] = Field(
+        default=None,
+        description=(
+            "The name of the person whose asset is being passed on -- the "
+            "testator/grantor who wrote the Will or owns the asset (e.g. "
+            "the person who says 'I, [Name], do hereby...'). Use this name "
+            "even if the document never literally uses the word 'deceased' "
+            "(a Will is written while the person is still alive)."
+        ),
+    )
     relationship: Optional[str] = None
     inherited_asset_details: Optional[str] = None
     date_of_inheritance: Date = Field(
         default=None,
         description=(
-            "The date the heir actually took ownership of the asset "
-            "(e.g. date of the deceased's demise, or a date explicitly "
-            "labeled as the inheritance/transfer date). Do NOT use a Will's "
-            "execution/signing date, or an asset's acquisition/investment "
-            "date, unless the document explicitly calls it the inheritance date."
+            "The date the heir actually took ownership of the asset. "
+            "Prefer an explicit inheritance/transfer date if the document states one. "
+            "If the document is a Will where the testator is still alive (no inheritance "
+            "has occurred yet), use the Will's execution/signing date instead, since that "
+            "is the closest real date the document provides. Return null only if no date "
+            "at all is present in the document."
         ),
     )
 
